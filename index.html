@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0a0a1a, #1a1035, #0d0d2b); color: #fff; min-height: 100vh; overflow-x: hidden; }
+  .screen { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+  .screen.active { display: flex; }
+  .glass { background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.08); }
+  .btn { border: none; cursor: pointer; color: #fff; transition: all 0.3s; }
+  .btn:hover { transform: scale(1.03); }
+  .glow-btn { background: linear-gradient(135deg, #FF6B6B, #6C5CE7); box-shadow: 0 0 30px rgba(108,92,231,0.4); font-weight: 700; }
+
+  /* Setup */
+  .setup-box { border-radius: 20px; padding: 28px; width: 100%; max-width: 420px; }
+  .section-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .option-row { display: flex; gap: 8px; margin-bottom: 20px; }
+  .option-btn { flex: 1; padding: 10px 0; border-radius: 10px; font-size: 14px; background: rgba(255,255,255,0.06); }
+  .option-btn.active { background: linear-gradient(135deg, #6C5CE7, #FF6B6B); font-weight: 700; }
+  .option-btn.active-gold { background: linear-gradient(135deg, #FFD93D, #FF6B6B); font-weight: 700; }
+  .player-input { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .player-input input { flex: 1; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: #fff; font-size: 16px; outline: none; }
+  .avatar-btn { width: 40px; height: 40px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); font-size: 22px; cursor: pointer; }
+  .avatar-picker { display: none; flex-wrap: wrap; gap: 6px; padding: 8px; border-radius: 10px; margin-top: -4px; margin-bottom: 8px; }
+  .avatar-picker.open { display: flex; }
+  .avatar-picker button { width: 36px; height: 36px; border-radius: 8px; border: 1px solid transparent; background: rgba(255,255,255,0.05); font-size: 18px; cursor: pointer; }
+  .remove-btn { background: rgba(255,80,80,0.15); border: none; color: #ff5050; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 14px; }
+  .add-player-btn { width: 100%; padding: 10px; border-radius: 10px; border: 1px dashed rgba(255,255,255,0.15); background: transparent; color: #666; cursor: pointer; font-size: 13px; }
+  .start-btn { width: 100%; padding: 14px; border-radius: 12px; font-size: 18px; margin-top: 20px; }
+
+  /* Play */
+  .targets-row { display: flex; gap: 16px; margin: 16px 0 6px; }
+  .target-card { border-radius: 18px; padding: 16px 32px; text-align: center; box-shadow: 0 0 25px rgba(255,215,0,0.1); }
+  .target-num { font-size: 48px; font-weight: 900; background: linear-gradient(135deg, #FFD93D, #FF6B6B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 10px rgba(255,107,107,0.3)); }
+  .players-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 420px; }
+  .player-card { width: 100%; border-radius: 16px; padding: 16px 8px; text-align: center; cursor: pointer; transition: all 0.3s; }
+  .player-card.flash { transform: scale(1.05); }
+  .score-dots { display: flex; justify-content: center; gap: 4px; margin-bottom: 4px; flex-wrap: wrap; }
+  .score-dot { width: 14px; height: 14px; border-radius: 50%; transition: all 0.3s; }
+  .powerups-row { display: flex; gap: 4px; margin-top: 6px; justify-content: center; }
+  .power-btn { padding: 4px 8px; border-radius: 8px; border: none; font-size: 13px; cursor: pointer; background: rgba(255,255,255,0.08); transition: all 0.2s; }
+  .power-btn.used { opacity: 0.3; background: rgba(255,255,255,0.02); pointer-events: none; }
+
+  /* Toast */
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(108,92,231,0.9); padding: 10px 24px; border-radius: 12px; font-size: 15px; font-weight: 700; z-index: 1000; box-shadow: 0 0 30px rgba(108,92,231,0.5); display: none; animation: fadeIn 0.3s; }
+  .toast.show { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(-10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+  /* Active power banner */
+  .active-power { font-size: 12px; color: #FFD93D; margin-bottom: 8px; font-weight: 700; display: none; }
+  .active-power.show { display: block; }
+
+  /* Winner */
+  .winner-cards { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 40px; }
+  .winner-card { border-radius: 14px; padding: 14px 22px; text-align: center; }
+
+  /* Confetti canvas */
+  #confetti { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 999; }
+</style>
+</head>
+<body>
+
+<canvas id="confetti"></canvas>
+<div class="toast" id="toast"></div>
+
+<!-- SETUP SCREEN -->
+<div class="screen active" id="setupScreen">
+  <div style="font-size:44px;font-weight:900;margin-bottom:4px;text-shadow:0 0 40px rgba(108,92,231,0.5)">🎲 Dice Math Duel</div>
+  <p style="color:#666;margin-bottom:24px;font-size:14px">Roll • Calculate • Dominate</p>
+  <div class="glass setup-box">
+    <div class="section-label">Difficulty</div>
+    <div class="option-row" id="difficultyRow">
+      <button class="btn option-btn active" data-val="easy" onclick="setDifficulty('easy')">Easy (+−)</button>
+      <button class="btn option-btn" data-val="hard" onclick="setDifficulty('hard')">Hard (+−×÷)</button>
+    </div>
+    <div class="section-label">Points to Win</div>
+    <div class="option-row" id="winScoreRow">
+      <button class="btn option-btn" data-val="3" onclick="setWinScore(3)">3</button>
+      <button class="btn option-btn active-gold" data-val="5" onclick="setWinScore(5)">5</button>
+      <button class="btn option-btn" data-val="7" onclick="setWinScore(7)">7</button>
+      <button class="btn option-btn" data-val="10" onclick="setWinScore(10)">10</button>
+    </div>
+    <div class="section-label" id="playerCount">Players (2)</div>
+    <div id="playersList"></div>
+    <button class="add-player-btn" id="addPlayerBtn" onclick="addPlayer()">+ Add Player</button>
+    <button class="btn glow-btn start-btn" onclick="startGame()">Start Game 🎮</button>
+  </div>
+</div>
+
+<!-- PLAY SCREEN -->
+<div class="screen" id="playScreen">
+  <div style="font-size:12px;color:#555;text-transform:uppercase;letter-spacing:2px" id="roundLabel">Round 1</div>
+  <div style="font-size:18px;font-weight:800;margin-bottom:4px;text-shadow:0 0 20px rgba(108,92,231,0.4)">🎲 Dice Math Duel</div>
+  <div style="font-size:11px;color:#444;margin-bottom:14px" id="diffLabel">Easy Mode (+−)</div>
+  <div class="targets-row" id="targetsRow"></div>
+  <div class="active-power" id="activePowerLabel"></div>
+  <p style="color:#444;font-size:11px;margin-bottom:14px">Tap the winner of this round</p>
+  <div class="players-grid" id="playersGrid"></div>
+</div>
+
+<!-- WINNER SCREEN -->
+<div class="screen" id="winnerScreen">
+  <div style="font-size:80px;margin-bottom:10px;filter:drop-shadow(0 0 20px gold)">🏆</div>
+  <div style="font-size:22px;color:#888;margin-bottom:4px" id="winnerAvatar"></div>
+  <div style="font-size:46px;font-weight:900;margin-bottom:8px" id="winnerName"></div>
+  <div style="font-size:20px;color:#FFD93D;margin-bottom:40px">Champion of the Dice Math Duel!</div>
+  <div class="winner-cards" id="winnerCards"></div>
+  <button class="btn glow-btn" style="padding:14px 44px;border-radius:14px;font-size:18px" onclick="resetGame()">Play Again 🔄</button>
+</div>
+
+<script>
+const COLORS = ["#FF6B6B", "#4ECDC4", "#FFD93D", "#6C5CE7"];
+const GLOW = ["#FF6B6B80", "#4ECDC480", "#FFD93D80", "#6C5CE780"];
+const AVATARS = ["🦁","🐲","🦅","🐺","🦊","🐙","🎯","⚡","🔥","💎","🌟","🎲"];
+
+let state = {
+  players: [{name:"",avatar:"🦁"},{name:"",avatar:"🐲"}],
+  scores: [], streaks: [], powerUps: [],
+  targets: [0,0], round: 1, difficulty: "easy", winScore: 5,
+  lastWinner: -1, activePower: null
+};
+
+// ── Targets ──
+function generateTargets(diff) {
+  const results = new Set();
+  for (let a=1;a<=6;a++) for (let b=1;b<=6;b++) for (let c=1;c<=6;c++) {
+    const v=[a,b,c];
+    for (let i=0;i<3;i++) for (let j=0;j<3;j++) {
+      if(i===j) continue;
+      const k=3-i-j, x=v[i], y=v[j], z=v[k];
+      let ops=[x+y+z, x+y-z, x-y+z, x-y-z];
+      if(diff==="hard") ops.push(x*y+z,x*y-z,x*y*z,x*(y+z),x*(y-z),(x+y)*z,(x-y)*z,x*y/z,x/y+z,x/y-z,x/y*z);
+      ops.forEach(r => { if(r>0 && r<=(diff==="hard"?50:20) && Number.isFinite(r) && r===Math.round(r)) results.add(r); });
+    }
+  }
+  const pool=[...results];
+  let t1=pool[Math.floor(Math.random()*pool.length)], t2;
+  do { t2=pool[Math.floor(Math.random()*pool.length)]; } while(t2===t1);
+  return [t1,t2];
+}
+
+// ── Confetti ──
+function fireConfetti() {
+  const canvas=document.getElementById("confetti"), ctx=canvas.getContext("2d");
+  canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+  const cols=["#FF6B6B","#4ECDC4","#FFD93D","#6C5CE7","#FF8A5C","#EA5455"];
+  const parts=Array.from({length:80},()=>({
+    x:Math.random()*canvas.width, y:-20-Math.random()*200,
+    w:6+Math.random()*6, h:4+Math.random()*4,
+    vx:(Math.random()-0.5)*4, vy:2+Math.random()*4,
+    rot:Math.random()*360, vr:(Math.random()-0.5)*10,
+    color:cols[Math.floor(Math.random()*cols.length)], life:1
+  }));
+  function anim() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    let alive=false;
+    parts.forEach(p => {
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.1; p.rot+=p.vr; p.life-=0.008;
+      if(p.life<=0) return; alive=true;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
+      ctx.globalAlpha=p.life; ctx.fillStyle=p.color;
+      ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore();
+    });
+    if(alive) requestAnimationFrame(anim);
+    else ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+  anim();
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"), 2000);
+}
+
+// ── Setup UI ──
+function setDifficulty(d) {
+  state.difficulty=d;
+  document.querySelectorAll("#difficultyRow .option-btn").forEach(b => b.classList.toggle("active", b.dataset.val===d));
+}
+function setWinScore(n) {
+  state.winScore=n;
+  document.querySelectorAll("#winScoreRow .option-btn").forEach(b => { b.classList.remove("active-gold"); if(+b.dataset.val===n) b.classList.add("active-gold"); });
+}
+
+function renderSetupPlayers() {
+  const list=document.getElementById("playersList"); list.innerHTML="";
+  document.getElementById("playerCount").textContent=`Players (${state.players.length})`;
+  document.getElementById("addPlayerBtn").style.display=state.players.length>=4?"none":"block";
+
+  state.players.forEach((p,i) => {
+    const row=document.createElement("div"); row.className="player-input";
+    row.innerHTML=`
+      <button class="avatar-btn" style="border-color:${COLORS[i]}40;box-shadow:0 0 12px ${GLOW[i]}" onclick="toggleAvatarPicker(${i})">${p.avatar}</button>
+      <input type="text" placeholder="Player ${i+1}" value="${p.name}" maxlength="12" oninput="state.players[${i}].name=this.value" style="border-color:${COLORS[i]}30">
+      ${state.players.length>2?`<button class="remove-btn" onclick="removePlayer(${i})">✕</button>`:""}
+    `;
+    list.appendChild(row);
+
+    const picker=document.createElement("div");
+    picker.className="avatar-picker glass"; picker.id=`picker-${i}`;
+    AVATARS.forEach(a => {
+      const btn=document.createElement("button");
+      btn.textContent=a; btn.style.border=p.avatar===a?`2px solid ${COLORS[i]}`:"1px solid transparent";
+      btn.onclick=()=>{ state.players[i].avatar=a; document.querySelectorAll(".avatar-picker").forEach(x=>x.classList.remove("open")); renderSetupPlayers(); };
+      picker.appendChild(btn);
+    });
+    list.appendChild(picker);
+  });
+}
+function toggleAvatarPicker(i) {
+  document.querySelectorAll(".avatar-picker").forEach((x,xi)=>{ if(xi!==i) x.classList.remove("open"); });
+  document.getElementById(`picker-${i}`).classList.toggle("open");
+}
+function addPlayer() { if(state.players.length<4) { state.players.push({name:"",avatar:AVATARS[state.players.length+2]}); renderSetupPlayers(); } }
+function removePlayer(i) { if(state.players.length>2) { state.players.splice(i,1); renderSetupPlayers(); } }
+
+// ── Show Screen ──
+function showScreen(id) { document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active")); document.getElementById(id).classList.add("active"); }
+
+// ── Start Game ──
+function startGame() {
+  state.players=state.players.filter(p=>p.name.trim());
+  if(state.players.length<2) return;
+  state.scores=state.players.map(()=>0);
+  state.streaks=state.players.map(()=>0);
+  state.powerUps=state.players.map(()=>({double:1,steal:1,skip:1}));
+  state.targets=generateTargets(state.difficulty);
+  state.round=1; state.lastWinner=-1; state.activePower=null;
+  renderPlay(); showScreen("playScreen");
+}
+
+// ── Render Play ──
+function renderPlay() {
+  document.getElementById("roundLabel").textContent=`Round ${state.round}`;
+  document.getElementById("diffLabel").textContent=state.difficulty==="easy"?"Easy Mode (+−)":"Hard Mode (+−×÷)";
+
+  const tr=document.getElementById("targetsRow"); tr.innerHTML="";
+  state.targets.forEach((t,i) => {
+    tr.innerHTML+=`<div class="glass target-card"><div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Target ${i+1}</div><div class="target-num">${t}</div></div>`;
+  });
+
+  const ap=document.getElementById("activePowerLabel");
+  if(state.activePower) {
+    ap.classList.add("show");
+    const p=state.players[state.activePower.player].name;
+    if(state.activePower.type==="double") ap.textContent=`⚡ ${p}'s Double Points active!`;
+    else if(state.activePower.type==="steal") ap.textContent=`🏴‍☠️ ${p}'s Steal active!`;
+    else ap.textContent="⏭️ Tap any player to skip this round";
+  } else { ap.classList.remove("show"); }
+
+  const grid=document.getElementById("playersGrid"); grid.innerHTML="";
+  state.players.forEach((p,i) => {
+    const dots=Array.from({length:state.winScore},(_,si)=>
+      `<div class="score-dot" style="background:${si<state.scores[i]?COLORS[i]:"rgba(255,255,255,0.08)"};border:2px solid ${COLORS[i]}50;${si<state.scores[i]?`box-shadow:0 0 8px ${GLOW[i]}`:""}" ></div>`
+    ).join("");
+
+    const streak=state.streaks[i]>=2?`<div style="font-size:10px;color:#FF6B6B;font-weight:700">🔥 ${state.streaks[i]} streak</div>`:"";
+
+    const powers=["double","steal","skip"].map(type=>{
+      const icons={double:"⚡",steal:"🏴‍☠️",skip:"⏭️"};
+      const used=!state.powerUps[i]||state.powerUps[i][type]<=0||state.activePower!==null;
+      return `<button class="power-btn ${used?"used":""}" onclick="usePower(${i},'${type}')" ${used?"disabled":""}>${icons[type]}</button>`;
+    }).join("");
+
+    grid.innerHTML+=`
+      <div>
+        <button class="glass player-card btn" id="pcard-${i}" onclick="awardPoint(${i})" style="border:1px solid rgba(255,255,255,0.08);box-shadow:0 0 10px ${GLOW[i]}">
+          <div style="font-size:28px;margin-bottom:4px">${p.avatar}</div>
+          <div style="font-size:15px;font-weight:800;margin-bottom:6px">${p.name}</div>
+          <div class="score-dots">${dots}</div>
+          ${streak}
+          <div style="color:#555;font-size:10px;margin-top:6px">Tap if closest</div>
+        </button>
+        <div class="powerups-row">${powers}</div>
+      </div>`;
+  });
+}
+
+// ── Power-ups ──
+function usePower(i, type) {
+  if(!state.powerUps[i]||state.powerUps[i][type]<=0||state.activePower) return;
+  state.powerUps[i][type]-=1;
+  state.activePower={player:i,type};
+  const labels={double:"⚡ Double Points",steal:"🏴‍☠️ Steal Point",skip:"⏭️ Skip Round"};
+  showToast(`${state.players[i].name} activated ${labels[type]}!`);
+  renderPlay();
+}
+
+// ── Award Point ──
+function awardPoint(i) {
+  if(state.activePower?.type==="skip") {
+    showToast("⏭️ Round skipped!"); state.activePower=null; nextRound(); return;
+  }
+  let pts=1;
+  // Streak
+  if(state.lastWinner===i) {
+    state.streaks[i]+=1;
+    if(state.streaks[i]>=3) { pts+=1; showToast(`🔥 ${state.players[i].name} STREAK BONUS! +1 extra!`); state.streaks[i]=0; }
+  } else { state.streaks.fill(0); state.streaks[i]=1; }
+  // Double
+  if(state.activePower?.type==="double"&&state.activePower?.player===i) { pts*=2; showToast(`⚡ DOUBLE POINTS! +${pts}!`); }
+  // Steal
+  if(state.activePower?.type==="steal"&&state.activePower?.player===i) {
+    let mx=-1,ms=-1; state.scores.forEach((s,si)=>{ if(si!==i&&s>ms){ms=s;mx=si;} });
+    if(mx>=0&&state.scores[mx]>0) { state.scores[mx]-=1; pts+=1; showToast(`🏴‍☠️ ${state.players[i].name} stole from ${state.players[mx].name}!`); }
+  }
+
+  state.scores[i]+=pts; state.lastWinner=i;
+  fireConfetti();
+
+  // Flash
+  const card=document.getElementById(`pcard-${i}`);
+  if(card) { card.style.borderColor=COLORS[i]; card.style.boxShadow=`0 0 30px ${GLOW[i]}`; card.style.background=`${COLORS[i]}20`; card.style.transform="scale(1.05)"; }
+
+  if(state.scores[i]>=state.winScore) {
+    setTimeout(()=>showWinner(i), 800);
+  } else {
+    setTimeout(()=>{ if(card){card.style.transform="scale(1)";card.style.background="rgba(255,255,255,0.04)";} nextRound(); }, 1200);
+  }
+}
+
+function nextRound() {
+  state.targets=generateTargets(state.difficulty);
+  state.round+=1; state.activePower=null;
+  renderPlay();
+}
+
+// ── Winner ──
+function showWinner(i) {
+  document.getElementById("winnerAvatar").textContent=state.players[i].avatar;
+  const nameEl=document.getElementById("winnerName");
+  nameEl.textContent=state.players[i].name;
+  nameEl.style.textShadow=`0 0 40px ${COLORS[i]}80`;
+
+  const cards=document.getElementById("winnerCards"); cards.innerHTML="";
+  state.players.forEach((p,pi)=>{
+    cards.innerHTML+=`<div class="glass winner-card" style="border-left:4px solid ${COLORS[pi]};box-shadow:0 0 15px ${GLOW[pi]}">
+      <div style="font-size:20px;margin-bottom:2px">${p.avatar}</div>
+      <div style="font-weight:700">${p.name}</div>
+      <div style="font-size:26px;font-weight:900;color:${COLORS[pi]}">${state.scores[pi]}</div>
+    </div>`;
+  });
+
+  fireConfetti();
+  showScreen("winnerScreen");
+}
+
+function resetGame() {
+  state={players:[{name:"",avatar:"🦁"},{name:"",avatar:"🐲"}],scores:[],streaks:[],powerUps:[],targets:[0,0],round:1,difficulty:"easy",winScore:5,lastWinner:-1,activePower:null};
+  setDifficulty("easy"); setWinScore(5);
+  renderSetupPlayers(); showScreen("setupScreen");
+}
+
+// ── Init ──
+renderSetupPlayers();
+</script>
+</body>
+</html>
